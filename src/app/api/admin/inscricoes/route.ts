@@ -1,3 +1,5 @@
+import { timingSafeEqual } from "node:crypto";
+
 type AdminAuthPayload = {
   username?: unknown;
   password?: unknown;
@@ -30,6 +32,15 @@ function normalizeRow(row: Record<string, unknown>, index: number): Participante
     createdAt: rawDate ? String(rawDate) : null,
   };
 }
+function credentialsMatch(value: string, expectedValue: string): boolean {
+  const valueBuffer = Buffer.from(value);
+  const expectedBuffer = Buffer.from(expectedValue);
+
+  return (
+    valueBuffer.length === expectedBuffer.length &&
+    timingSafeEqual(valueBuffer, expectedBuffer)
+  );
+}
 
 export async function POST(request: Request) {
   let payload: AdminAuthPayload;
@@ -48,10 +59,21 @@ export async function POST(request: Request) {
   const password =
     typeof payload.password === "string" ? payload.password : "";
 
-  const expectedUser = process.env.ADMIN_USER || "cometa";
-  const expectedPassword = process.env.ADMIN_PASSWORD || "cometa2026";
+  const expectedUser = process.env.ADMIN_USER;
+  const expectedPassword = process.env.ADMIN_PASSWORD;
 
-  if (username !== expectedUser || password !== expectedPassword) {
+  if (!expectedUser || !expectedPassword) {
+    console.error("Credenciais do painel administrativo não configuradas.");
+    return Response.json(
+      { error: "O acesso administrativo ainda não está configurado." },
+      { status: 500 },
+    );
+  }
+
+  if (
+    !credentialsMatch(username, expectedUser) ||
+    !credentialsMatch(password, expectedPassword)
+  ) {
     return Response.json(
       { error: "Usuário ou senha incorretos." },
       { status: 401 },
@@ -59,50 +81,26 @@ export async function POST(request: Request) {
   }
 
   const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey =
-    process.env.SUPABASE_SECRET_KEY ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_PUBLISHABLE_KEY;
+  const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
 
-  if (!supabaseUrl || !supabaseKey) {
+  if (!supabaseUrl || !supabaseSecretKey) {
     return Response.json(
-      { error: "Configuração do Supabase ausente no servidor." },
+      {
+        error:
+          "A chave secreta do Supabase ainda não foi configurada no servidor.",
+      },
       { status: 500 },
     );
   }
 
   try {
-    // 1. Tenta buscar via RPC `listar_inscricoes` (funciona com a chave publishable/anon)
-    const rpcResponse = await fetch(
-      `${supabaseUrl}/rest/v1/rpc/listar_inscricoes`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({}),
-        cache: "no-store",
-      },
-    );
-
-    if (rpcResponse.ok) {
-      const rawData = (await rpcResponse.json()) as Record<string, unknown>[];
-      const participantes = (Array.isArray(rawData) ? rawData : []).map(
-        (item, idx) => normalizeRow(item, idx),
-      );
-      return Response.json({ participantes }, { status: 200 });
-    }
-
-    // 2. Fallback: tenta buscar diretamente na tabela `inscricoes`
     const tableResponse = await fetch(
-      `${supabaseUrl}/rest/v1/inscricoes?select=*`,
+      `${supabaseUrl}/rest/v1/inscricoes?select=id,nome_completo,email,criado_em&order=criado_em.desc`,
       {
         method: "GET",
         headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
+          apikey: supabaseSecretKey,
+          Authorization: `Bearer ${supabaseSecretKey}`,
         },
         cache: "no-store",
       },
@@ -116,14 +114,13 @@ export async function POST(request: Request) {
       return Response.json({ participantes }, { status: 200 });
     }
 
-    const rpcError = await rpcResponse.json().catch(() => null);
-    console.error("Erro ao listar inscrições no Supabase:", rpcError);
+    const tableError = await tableResponse.json().catch(() => null);
+    console.error("Erro ao listar inscrições no Supabase:", tableError);
 
     return Response.json(
       {
         error:
-          "A função SQL `listar_inscricoes` ainda não foi criada no Supabase (ou a tabela está sem permissão de leitura). Execute o arquivo `supabase/listar_inscricoes.sql` no SQL Editor do Supabase.",
-        needsSqlSetup: true,
+          "Não foi possível carregar as inscrições do banco de dados.",
       },
       { status: 502 },
     );
