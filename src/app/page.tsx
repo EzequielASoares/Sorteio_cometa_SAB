@@ -75,7 +75,7 @@ export default function SorteioInscricaoPage() {
     if (error) setError(null);
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 
@@ -87,11 +87,34 @@ export default function SorteioInscricaoPage() {
 
     setIsSubmitting(true);
 
-    // Simulação de envio no front-end (pronto para futura integração com API/Back-end)
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const response = await fetch("/api/inscricoes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nomeCompleto: fullName,
+          email,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+
+      if (!response.ok) {
+        setError(
+          payload?.error ??
+            "Não foi possível registrar sua inscrição. Tente novamente.",
+        );
+        return;
+      }
+
       setIsSubmitted(true);
-    }, 600);
+    } catch {
+      setError("Não foi possível registrar sua inscrição. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReset = () => {
