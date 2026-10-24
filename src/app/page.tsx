@@ -117,15 +117,6 @@ export default function SorteioInscricaoPage() {
     }
   };
 
-  const handleReset = () => {
-    setFullName("");
-    setEmail("");
-    setVisitedInstagram(false);
-    setConfirmedFollow(false);
-    setError(null);
-    setIsSubmitted(false);
-  };
-
   return (
     <div className="min-h-screen flex flex-col justify-between bg-gradient-to-b from-[#002b49] via-brand-blue to-[#003457] text-white relative overflow-x-hidden">
       {/* Elementos decorativos espaciais / Cometa Nordestino */}
@@ -515,24 +506,16 @@ export default function SorteioInscricaoPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                  <div className="flex items-center justify-center pt-2">
                     <a
                       href={INSTAGRAM_URL}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-full sm:flex-1 min-h-[48px] px-4 py-3 rounded-xl font-space-grotesk font-bold text-sm bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] text-white shadow-md hover:brightness-110 flex items-center justify-center gap-2 transition-all"
+                      className="w-full sm:w-auto min-h-[48px] px-5 py-3 rounded-xl font-space-grotesk font-bold text-sm bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] text-white shadow-md hover:brightness-110 flex items-center justify-center gap-2 transition-all"
                     >
                       <InstagramIcon className="w-4 h-4" />
                       <span>Ver Instagram do Projeto</span>
                     </a>
-
-                    <button
-                      type="button"
-                      onClick={handleReset}
-                      className="w-full sm:w-auto min-h-[48px] px-5 py-3 rounded-xl font-space-grotesk font-semibold text-sm bg-slate-100 hover:bg-slate-200 text-text-secondary transition-colors cursor-pointer"
-                    >
-                      Nova inscrição
-                    </button>
                   </div>
                 </div>
               )}
